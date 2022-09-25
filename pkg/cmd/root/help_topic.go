@@ -99,9 +99,9 @@ var HelpTopics = map[string]map[string]string{
 		$ gh pr list
 		Showing 23 of 23 open pull requests in cli/cli
 
-		#123  A helpful contribution                        contribution-branch                   about 1 day ago
-		#124  Improve the docs                                                  docs-branch                         about 2 days ago
-		#125  An exciting new feature                   feature-branch                           about 2 days ago
+		#123  A helpful contribution                        contribution-branch	  	                 about 1 day ago
+		#124  Improve the docs                             	docs-branch		                         about 2 days ago
+		#125  An exciting new feature                   	feature-branch                           about 2 days ago
 		%[1]s%[1]s%[1]s
 
 		Running the same command with the %[1]s--json%[1]s flag and a comma separated list of fields, we can view the data in JSON format and select which data to display. In this example, we replace the %[1]supdatedAt%[1]s field with %[1]sauthor%[1]s:
