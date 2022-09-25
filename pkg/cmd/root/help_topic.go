@@ -91,18 +91,62 @@ var HelpTopics = map[string]map[string]string{
 	"formatting": {
 		"short": "Formatting options for JSON data exported from gh",
 		"long": heredoc.Docf(`
-			Some gh commands support exporting the data as JSON as an alternative to their usual
-			line-based plain text output. This is suitable for passing structured data to scripts.
-			The JSON output is enabled with the %[1]s--json%[1]s option, followed by the list of fields
-			to fetch. Use the flag without a value to get the list of available fields.
+		By default, the result of %[1]sgh%[1]s commands are output in a line-based plain text format. By passing additional flags you can set the output to JSON and optionally further format this output. This can be useful in selecting a subset of data or fields, creating new data structures, and can also be used as input to another command line script.
 
-			The %[1]s--jq%[1]s option accepts a query in jq syntax and will print only the resulting
-			values that match the query. This is equivalent to piping the output to %[1]sjq -r%[1]s,
-			but does not require the jq utility to be installed on the system. To learn more
-			about the query syntax, see: <https://stedolan.github.io/jq/manual/v1.6/>
+		As an example, running the command %[1]sgh pr list%[1]s in the root of the %[1]scli/cli%[1]s repository, you would see output similar to the following:
 
-			With %[1]s--template%[1]s, the provided Go template is rendered using the JSON data as input.
-			For the syntax of Go templates, see: <https://golang.org/pkg/text/template/>
+		%[1]s%[1]s%[1]s
+		$ gh pr list
+		Showing 23 of 23 open pull requests in cli/cli
+
+		#123  A helpful contribution                        contribution-branch                   about 1 day ago
+		#124  Improve the docs                                                  docs-branch                         about 2 days ago
+		#125  An exciting new feature                   feature-branch                           about 2 days ago
+		%[1]s%[1]s%[1]s
+
+		Running the same command with the %[1]s--json%[1]s flag and a comma separated list of fields, we can view the data in JSON format and select which data to display. In this example, we replace the %[1]supdatedAt%[1]s field with %[1]sauthor%[1]s:
+
+		%[1]s%[1]s%[1]s
+		$ gh pr list --json number,title,headRefName,author
+		[
+		  {
+			"author": {
+			  "login": "monalisa"
+			},
+			"headRefName": "contribution-branch",
+			"number": 123,
+			"title": "A helpful contribution"
+		  },
+		  {
+			"author": {
+			  "login": "codercat"
+			},
+			"headRefName": "docs-branch",
+			"number": 124,
+			"title": "Improve the docs"
+		  },
+		  {
+			"author": {
+			  "login": "cli-maintainer"
+			},
+			"headRefName": "feature-branch",
+			"number": 125,
+			"title": "An exciting new feature"
+		  }
+		]
+		%[1]s%[1]s%[1]s
+
+		Once the output is in JSON format, we can pass additional flags and arguments to further format the data.
+
+		* The %[1]s--jq%[1]s flag requires a string in %[1]sjq%[1]s query syntax, and will format the JSON values which match the query's filters. The %[1]sjq%[1]s utility does not need to be installed to use this formatting directive. %[1]sjq%[1]s filters can be used to select elements from an array, fields from an object, create a new array, and much more. To learn about %[1]sjq%[1]s query syntax, see: <https://stedolan.github.io/jq/manual/v1.6/>
+
+			As an example, select the second result from the list:
+			%[1]s%[1]s%[1]s
+			$ gh pr list --json number,title,headRefName,author --jq '.[1]'
+			{"author": {"login": "codercat"},"headRefName": "docs-branch","number":124,"title": "Improve the docs"}
+			%[1]s%[1]s%[1]s
+
+		* The %[1]s--template%[1]s flag requires a string in Go template syntax, and will format the JSON values which match the query. To learn more about Go templates, see: <https://golang.org/pkg/text/template/>.
 
 			The following functions are available in templates:
 			- %[1]sautocolor%[1]s: like %[1]scolor%[1]s, but only emits color to terminals
@@ -114,6 +158,39 @@ var HelpTopics = map[string]map[string]string{
 			- %[1]stimeago <time>%[1]s: renders a timestamp as relative to now
 			- %[1]stimefmt <format> <time>%[1]s: formats a timestamp using Go's Time.Format function
 			- %[1]struncate <length> <input>%[1]s: ensures input fits within length
+
+			As an example, we can display the original format of %[1]sgh pr list%[1]s with the %[1]s--template%[1]s flag:
+			%[1]s%[1]s%[1]s
+			$ gh pr list --json number,title,headRefName,updatedAt --template \
+				'{{range .}}{{tablerow (printf "#%v" .number | autocolor "green") .title .headRefName (timeago .updatedAt)}}{{end}}'
+
+			#123  A helpful contribution                        contribution-branch                   about 1 day ago
+			#124  Improve the docs                                                  docs-branch                         about 2 days ago
+			#125  An exciting new feature                   feature-branch                           about 2 days ago
+			%[1]s%[1]s%[1]s
+
+			A more complex example, which formats a pull request using multiple tables with headers:
+			%[1]s%[1]s%[1]s
+			$ gh pr view 3519 --json number,title,body,reviews,assignees --template \
+			'{{printf "#%v" .number}} {{.title}}
+
+			{{.body}}
+
+			{{tablerow "ASSIGNEE" "NAME"}}{{range .assignees}}{{tablerow .login .name}}{{end}}{{tablerender}}
+			{{tablerow "REVIEWER" "STATE" "COMMENT"}}{{range .reviews}}{{tablerow .author.login .state .body}}{{end}}
+			'
+
+			#3519 Add table and helper template functions
+
+			Resolves #3488
+
+			ASSIGNEE  NAME
+			mislav    Mislav Marohnić
+
+
+			REVIEWER  STATE              COMMENT
+			mislav    COMMENTED          This is going along great! Thanks for working on this ❤️
+			%[1]s%[1]s%[1]s
 		`, "`"),
 		"example": heredoc.Doc(`
 			# format issues as table
@@ -137,16 +214,16 @@ var HelpTopics = map[string]map[string]string{
 			gh follows normal conventions regarding exit codes.
 
 			- If a command completes successfully, the exit code will be 0
-			
+
 			- If a command fails for any reason, the exit code will be 1
 
 			- If a command is running but gets cancelled, the exit code will be 2
 
 			- If a command encounters an authentication issue, the exit code will be 4
 
-			NOTE: It is possible that a particular command may have more exit codes, so it is a good 
-			practice to check documentation for the command if you are relying on exit codes to 
-			control some behavior. 
+			NOTE: It is possible that a particular command may have more exit codes, so it is a good
+			practice to check documentation for the command if you are relying on exit codes to
+			control some behavior.
 		`),
 	},
 }
